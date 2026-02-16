@@ -22,7 +22,9 @@ class FileNotFoundError(BibTeXError):
 
 class BibTexClient:
     # Citation detection patterns
-    NARRATIVE_PATTERN = r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*(?:\s+(?:and|&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)?(?:,\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)*(?:\s+et\s+al\.?)?\s*\((?:forthcoming|\d{4}[a-z]?)\b"
+    # Narrative: Author (Year) or Author (Year, p. N) or Author et al. (Year)
+    # Handles: "Smith (2010)", "Smith and Jones (2010)", "Smith, Jones, and Brown (2010)"
+    NARRATIVE_PATTERN = r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*(?:(?:,\s+and|\s+and|,|\s+&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)*(?:\s+et\s+al\.?)?\s*\((?:forthcoming|\d{4}[a-z]?)(?:,\s*(?:p+\.?|pp\.?|ch\.?)\s*\d+(?:\-\d+)?)?[^)]*\)"
     PARENTHETICAL_PATTERN = r"\([^)]*[A-Z][a-zA-Z'-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z'-]+)?(?:\s+et\s+al\.?)?\s+(?:forthcoming|\d{4}[a-z]?)[^)]*\)"
 
     # Stopwords to skip in title
@@ -128,21 +130,29 @@ class BibTexClient:
 
         in_acknowledgments = False
         in_bibliography = False
-        in_cite_command = False
 
         for line_num, line in enumerate(lines, 1):
-            # Check for acknowledgments/bibliography sections
-            if re.search(r"(## .*[Aa]cknowledg|\\begin\{thebibliography\})", line):
-                if "Acknowled" in line or "acknowledgment" in line.lower():
-                    in_acknowledgments = True
-                if "thebibliography" in line:
-                    in_bibliography = True
+            # Check for acknowledgments section start (Markdown)
+            if re.search(r"##\s+.*[Aa]cknowledg", line):
+                in_acknowledgments = True
+                # Continue past the heading itself
                 continue
 
-            if re.search(r"(## (?!.*[Aa]cknowledg)|\\end\{thebibliography\})", line) and in_acknowledgments:
+            # Check for acknowledgments section end (next ## heading that is NOT acknowledgments)
+            if in_acknowledgments and re.search(r"##\s+", line):
                 in_acknowledgments = False
+                # Don't continue - process this heading line normally
+
+            # Check for bibliography section (LaTeX)
+            if re.search(r"\\begin\{thebibliography\}", line):
+                in_bibliography = True
                 continue
 
+            if re.search(r"\\end\{thebibliography\}", line):
+                in_bibliography = False
+                continue
+
+            # Skip lines in acknowledgments or bibliography
             if in_acknowledgments or in_bibliography:
                 continue
 
@@ -153,16 +163,29 @@ class BibTexClient:
             # Find narrative citations
             for match in re.finditer(self.NARRATIVE_PATTERN, line):
                 text = match.group(0)
+                # Exclude year ranges like "Something (2010-2015)"
+                if re.search(r"\(\d{4}\-\d{4}\)", text):
+                    continue
 
-                # Extract components
-                authors_match = re.search(r"^([A-Z][a-zA-Z'-]+)(?:\s+(?:and|&)\s+([A-Z][a-zA-Z'-]+))?", text)
-                year_match = re.search(r"\((\d{4}|forthcoming)", text)
+                # Extract components - get all authors (handle "A, B, and C" format)
+                # First, extract text before year
+                year_paren_idx = text.find("(")
+                author_text = text[:year_paren_idx].strip()
 
                 authors = []
-                if authors_match:
-                    authors = [authors_match.group(1)]
-                    if authors_match.group(2):
-                        authors.append(authors_match.group(2))
+                # Extract author names - look for capitalized words
+                # This handles various formats: "Smith", "Smith and Jones", "Smith, Jones, and Brown"
+                for author_match in re.finditer(r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", author_text):
+                    potential_author = author_match.group(0).strip()
+                    # Clean up "and" suffix (e.g., "Conley and" -> "Conley")
+                    if potential_author.endswith(" and"):
+                        potential_author = potential_author[:-4].strip()
+                    # Skip conjunctions and "et al"
+                    if potential_author.lower() not in ["et", "al", "and", "&"]:
+                        if potential_author not in authors:
+                            authors.append(potential_author)
+
+                year_match = re.search(r"\((\d{4}|forthcoming)", text)
 
                 year = year_match.group(1) if year_match else ""
 
@@ -192,17 +215,26 @@ class BibTexClient:
                 text = match.group(0)
                 content = text[1:-1]  # Remove outer parens
 
+                # Exclude year ranges like (2010-2015)
+                if re.match(r"^\d{4}\-\d{4}$", content.strip()):
+                    continue
+
                 # Extract prefix
                 prefix_match = re.match(r"^(see|e\.g\.|i\.e\.|cf\.)\s+", content, re.IGNORECASE)
                 prefix = prefix_match.group(1) if prefix_match else ""
 
-                # Extract authors
-                authors_match = re.search(r"([A-Z][a-zA-Z'-]+)(?:\s+(?:and|&)\s+([A-Z][a-zA-Z'-]+))?", content)
+                # Extract authors - handle multiple authors
+                # Split on commas and "and"/"&"
+                parts = re.split(r"(?:,\s*|\s+and\s+|\s+&\s+)", content)
                 authors = []
-                if authors_match:
-                    authors = [authors_match.group(1)]
-                    if authors_match.group(2):
-                        authors.append(authors_match.group(2))
+                for part in parts:
+                    part = part.strip()
+                    # Extract the first capitalized word (author name)
+                    author_match = re.match(r"([A-Z][a-zA-Z'-]+)", part)
+                    if author_match and "et" not in part.lower():
+                        author = author_match.group(1)
+                        if author not in authors:
+                            authors.append(author)
 
                 # Extract year
                 year_match = re.search(r"(\d{4}|forthcoming)", content)
