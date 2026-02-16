@@ -64,6 +64,26 @@ Then, install the plugins:
 
 ---
 
+## ⚠️ Token Usage Note
+
+These plugins include multiple MCP servers and skills that are loaded into Claude's context when active. While powerful, they can be token-heavy if all plugins remain enabled simultaneously.
+
+**Recommended practice:** Disable plugins when not actively using them to conserve tokens:
+
+```bash
+/plugin disable analytics-toolkit
+/plugin disable manuscript-tools
+```
+
+Re-enable when needed:
+
+```bash
+/plugin enable analytics-toolkit   # When working with R code
+/plugin enable manuscript-tools    # When preparing manuscripts
+```
+
+---
+
 ## Semantic Scholar API Key (Optional)
 
 The manuscript tools search Semantic Scholar to resolve citations and retrieve paper metadata. This works out of the box without any setup — unauthenticated requests share a pool of 1,000 requests per second across all users, which is more than enough for typical use.
