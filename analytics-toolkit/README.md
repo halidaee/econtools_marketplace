@@ -2,11 +2,11 @@
 
 Tools for R workflow optimization in research data analysis: parallel execution, code quality, environment management, and pipeline auditing.
 
-## Installation
+## 📦 Installation
 
 See the marketplace README in the parent directory for installation instructions. Once installed, all tools listed below are available within Claude Code.
 
-## Tools Overview
+## 🛠️ Tools Overview
 
 **r-parallel** — Convert sequential R code to parallel execution using the future ecosystem. Handles seed management for reproducibility and supports cross-platform backends. Use when you want to speed up loops, apply calls, or other sequential operations in R.
 

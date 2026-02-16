@@ -2,17 +2,17 @@
 
 Tools for academic manuscript preparation: citation discovery and management, bibliography quality control, figure and table formatting compliance, and mathematical notation standardization.
 
-## Installation
+## 📦 Installation
 
 Install via the marketplace. See the [parent directory README](../README.md) for instructions.
 
-## Tools Overview
+## 🛠️ Tools Overview
 
-### Bibliography Management
+### 📚 Bibliography Management
 
 The bibliography tools are split into two layers: **MCP servers** that provide programmatic access to specific data sources, and **skills** that orchestrate those servers into higher-level workflows.
 
-#### MCP Servers
+#### 🔧 MCP Servers
 
 These are the low-level building blocks. Each server exposes a small set of tools that do one thing well.
 
@@ -22,7 +22,7 @@ These are the low-level building blocks. Each server exposes a small set of tool
 
 **semantic-scholar-mcp** — Searches the Semantic Scholar API for paper metadata, abstracts, and citation data. Useful for broader keyword searches and for papers that may not yet have a DOI. Supports an optional API key for higher rate limits.
 
-#### Skills
+#### ✨ Skills
 
 These orchestrate the MCP servers into complete workflows.
 
@@ -30,7 +30,7 @@ These orchestrate the MCP servers into complete workflows.
 
 **bibtex-janitor** — Standalone `.bib` file cleanup. Standardizes journal names (e.g., "JPE" to "Journal of Political Economy"), applies title casing with brace-protected acronyms, prunes unnecessary fields (abstracts, keywords, Mendeley metadata), and validates required fields by entry type. Designed for pre-submission cleanup to AER/QJE standards. Does not use the MCP servers — runs its own Python tooling directly.
 
-### Manuscript Formatting
+### 📝 Manuscript Formatting
 
 **aer-figures** — Validate and format figures to American Economic Review standards.
 
@@ -44,11 +44,11 @@ These orchestrate the MCP servers into complete workflows.
 
 **visual-sync** — Ensure visual consistency across all manuscript elements (figures, tables, captions).
 
-## Bibliography Workflow: Best Practices
+## 📖 Bibliography Workflow: Best Practices
 
 The bibliography tools are designed around a common workflow in economics: you write a draft with citations spelled out in prose, then formalize them before submission. Here is how to get the most out of the tools, and what to be aware of.
 
-### Typical workflow
+### 🔄 Typical workflow
 
 1. **Scan** your document with bibtex-curator. It uses bibtex-mcp's `scan_bare_citations` to find written-out citations like "Banerjee et al. (2013)" that should be proper `@key` or `\cite{key}` commands.
 
@@ -74,7 +74,7 @@ The bibliography tools are designed around a common workflow in economics: you w
 
 5. **Clean up.** Run bibtex-janitor separately to standardize journal names, fix title casing, and prune metadata fields before submission.
 
-### How to use
+### 💡 How to use
 
 In Claude Code, you trigger skills by describing what you want in natural language. The skills activate automatically based on your request. Some examples:
 
@@ -110,7 +110,7 @@ This triggers aer-figures to validate dimensions, fonts, and labeling against AE
 
 You do not need to name the specific skill or MCP server. Claude Code matches your request to the appropriate tool.
 
-### Limitations
+### ⚠️ Limitations
 
 The bibliography tools handle the bulk of routine citation work well: resolving "Author (Year)" prose citations against known databases, managing `.bib` files, and formatting for journal submission. But there are cases where they need your help or where you should review the output.
 
@@ -124,18 +124,18 @@ The bibliography tools handle the bulk of routine citation work well: resolving 
 
 **Formatting opinions.** The bibtex-janitor cleanup applies AER/QJE conventions by default: full journal names, title case, field pruning. If your target journal expects different formatting (e.g., abbreviated journal names), review the output before committing.
 
-### API rate limits
+### 🚦 API rate limits
 
 - **CrossRef**: No API key required. Including a `mailto` address in the configuration gets you into the "polite pool" with better rate limits.
 - **Semantic Scholar**: 100 requests per 5 minutes without an API key. Register for a free key at [semanticscholar.org](https://www.semanticscholar.org/product/api) for higher limits.
 
 For typical manuscript curation (scanning one document, resolving 20-30 citations), you are unlikely to hit rate limits. Bulk operations across multiple documents may require pacing or an API key.
 
-## Manuscript Formatting Workflow: Best Practices
+## ✍️ Manuscript Formatting Workflow: Best Practices
 
 The formatting tools handle the gap between "analysis code that produces output" and "output that meets journal submission standards." They only change presentation — never statistical content, plotted data, or table values.
 
-### How to use
+### 💡 How to use
 
 ```
 Format my figures for AER submission
@@ -173,7 +173,7 @@ Check for broken references in my manuscript
 
 Scans for dangling `@fig-` and `@tbl-` references, orphaned labels, inconsistent capitalization ("Figure" vs "figure"), undefined acronyms, and prose issues like long sentences or hedging clusters. Returns a report with line numbers and suggested fixes. Nothing is auto-corrected.
 
-### Limitations
+### ⚠️ Limitations
 
 **R-specific figure and table formatting.** The figure and table formatters rewrite R and ggplot2 code. If your figures are produced in Stata or Python, they can describe the formatting requirements but will not rewrite the code.
 
