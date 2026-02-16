@@ -4,11 +4,5 @@
   "description": "R workflow skills for parallelization, style enforcement, environment management, and pipeline dependency tracking",
   "author": {
     "name": "halidaee"
-  },
-  "skills": [
-    "skills/r-parallel",
-    "skills/r-style",
-    "skills/renv-manager",
-    "skills/dependency-tracker"
-  ]
+  }
 }

@@ -4,15 +4,5 @@
   "description": "Academic manuscript skills for figures, tables, notation, proofs, bibliography management, and visual synchronization",
   "author": {
     "name": "halidaee"
-  },
-  "skills": [
-    "skills/aer-figures",
-    "skills/aer-tables",
-    "skills/bibtex-curator",
-    "skills/bibtex-janitor",
-    "skills/notation-guardian",
-    "skills/palette-designer",
-    "skills/proof-checker",
-    "skills/visual-sync"
-  ]
+  }
 }
