@@ -1,10 +1,10 @@
 {
-  "name": "research-tools",
+  "name": "econtools_marketplace",
   "description": "Economics research skills: R analytics and manuscript preparation",
   "owner": {
     "name": "halidaee"
   },
-  "homepage": "~/Documents/Github/Claude_Plugins",
+  "homepage": "https://github.com/halidaee/econtools_marketplace",
   "plugins": [
     {
       "name": "analytics-toolkit",
