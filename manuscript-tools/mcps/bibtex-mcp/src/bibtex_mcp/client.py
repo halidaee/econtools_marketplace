@@ -24,11 +24,17 @@ class BibTexClient:
     # Citation detection patterns
     # Narrative: Author (Year) or Author (Year, p. N) or Author et al. (Year)
     # Handles: "Smith (2010)", "Smith and Jones (2010)", "Smith, Jones, and Brown (2010)"
-    NARRATIVE_PATTERN = r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*(?:(?:,\s+and|\s+and|,|\s+&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)*(?:\s+et\s+al\.?)?\s*\((?:forthcoming|\d{4}[a-z]?)(?:,\s*(?:p+\.?|pp\.?|ch\.?)\s*\d+(?:\-\d+)?)?[^)]*\)"
+    # Now case-insensitive and supports author initials like "Suri, T. (2011)"
+    # Uses word boundary to prevent matching arbitrary preceding text
+    # Restricts lowercase particles to short words (max 3 chars) like "de", "van", "von"
+    NARRATIVE_PATTERN = r"\b[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]{1,3})?(?:(?:,\s+and|\s+and|,|\s+&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]{1,3})?)*(?:\s+et\.?\s*al\.?|\s+etal\b|\s+et\s+all\b)?\s*(?:,\s+[A-Za-z]\.)??\s*\((?:forthcoming|\d{4}[a-z]?)(?:,\s*(?:p+\.?|pp\.?|ch\.?)\s*\d+(?:\-\d+)?)?[^)]*\)"
     # Parenthetical: (Author Year) or (Author and Author Year) or (Author, Author, 2006) etc
     # Now supports: and, &, comma-separated, or space-separated authors (may need skill-level disambiguation)
     # Allows optional prefix like "(see Author Year)" and nested year parens like "(Author (2011))"
-    PARENTHETICAL_PATTERN = r"\((?:[^()]*?|[^()]*\([^()]+\)[^()]*?)[A-Z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))[A-Z][a-zA-Z'-]+)*(?:\s+et\s+al\.?)?\s*,?\s*(?:\((?:\d{4}[a-z]?|forthcoming)\)|\d{4}[a-z]?|forthcoming)(?:[^()]*|\([^()]+\))*\)"
+    # Case-insensitive, supports semicolon/colon separators, better "et al" handling, mixed-case authors
+    PARENTHETICAL_PATTERN = r"\((?:[^()]*?|[^()]*\([^()]+\)[^()]*?)[A-Za-z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Za-z]))[A-Za-z][a-zA-Z'-]+)*(?:\s+et\.?\s*al\.?)?\s*[;:,]?\s*(?:\((?:\d{4}[a-z]?|forthcoming)\)|\d{4}[a-z]?|forthcoming)(?:[^()]*|\([^()]+\))*\)"
+    # Square bracket variant: [Author Year] - same as parenthetical but with square brackets
+    SQUARE_BRACKET_PATTERN = r"\[(?:[^\[\]]*?|[^\[\]]*\([^()]+\)[^\[\]]*?)[A-Za-z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Za-z]))[A-Za-z][a-zA-Z'-]+)*(?:\s+et\.?\s*al\.?)?\s*[;:,]?\s*(?:\((?:\d{4}[a-z]?|forthcoming)\)|\d{4}[a-z]?|forthcoming)(?:[^\[\]]*|\([^()]+\))*\]"
 
     # Stopwords to skip in title
     STOPWORDS = {"a", "an", "the", "on", "in", "at", "to", "for"}
@@ -185,16 +191,24 @@ class BibTexClient:
                 year_paren_idx = text.find("(")
                 author_text = text[:year_paren_idx].strip()
 
+                # Remove "et al" variations before extracting authors
+                author_text = re.sub(r"\s+et\.?\s*al\.?$", "", author_text)
+                author_text = re.sub(r"\s+etal$", "", author_text)
+                author_text = re.sub(r"\s+et\s+all$", "", author_text)
+                # Also remove trailing initial like ", T."
+                author_text = re.sub(r",\s+[A-Za-z]\.$", "", author_text)
+
                 authors = []
                 # Extract author names - look for capitalized words
                 # This handles various formats: "Smith", "Smith and Jones", "Smith, Jones, and Brown"
-                for author_match in re.finditer(r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", author_text):
+                # Restricts lowercase particles to short words (1-3 chars) like "de", "van"
+                for author_match in re.finditer(r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]{1,3})?", author_text):
                     potential_author = author_match.group(0).strip()
                     # Clean up "and" suffix (e.g., "Conley and" -> "Conley")
                     if potential_author.endswith(" and"):
                         potential_author = potential_author[:-4].strip()
-                    # Skip conjunctions and "et al"
-                    if potential_author.lower() not in ["et", "al", "and", "&"]:
+                    # Skip conjunctions and single initials
+                    if potential_author.lower() not in ["et", "al", "and", "&"] and len(potential_author) > 1:
                         if potential_author not in authors:
                             authors.append(potential_author)
 
@@ -247,24 +261,29 @@ class BibTexClient:
                 content_for_authors = re.sub(r"\(\d{4}[a-z]?\)", "", content_for_authors)
                 content_for_authors = re.sub(r"\(forthcoming\)", "", content_for_authors, flags=re.IGNORECASE)
 
-                # Remove "et al" to avoid parsing it as an author
-                content_for_authors = re.sub(r"\s+et\s+al\.?", "", content_for_authors)
+                # Remove "et al" variations to avoid parsing as author
+                # Handles: "et al", "et. al", "et al.", "etal", "et all"
+                content_for_authors = re.sub(r"\s+et\.?\s*al\.?|\s+etal\b|\s+et\s+all\b", "", content_for_authors, flags=re.IGNORECASE)
 
-                # Split on "and", "&", commas, or space before capital letter
-                # This handles: "Smith and Jones", "Smith, Jones,", "Smith Jones," (space-separated)
-                parts = re.split(r"(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))", content_for_authors)
+                # Split on "and", "&" (with or without spaces), commas, or space before any letter (for mixed case)
+                # This handles: "Smith and Jones", "Smith&Chen", "Smith, Jones,", "Smith jones" (space-separated, mixed case)
+                parts = re.split(r"(?:\s+and\s+|\s+&\s+|&|,\s+|\s+(?=[A-Za-z]))", content_for_authors)
                 authors = []
                 for part in parts:
                     part = part.strip()
-                    # Extract capitalized words (could be compound names)
-                    for author_match in re.finditer(r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", part):
+                    # Extract capitalized words (could be compound names) - case-insensitive now
+                    for author_match in re.finditer(r"[A-Za-z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", part):
                         potential_author = author_match.group(0).strip()
                         # Skip the year and other non-author content
-                        if not re.match(r"^\d{4}|forthcoming", potential_author) and potential_author.lower() not in ["et", "al"]:
+                        if not re.match(r"^\d{4}|forthcoming", potential_author, re.IGNORECASE) and potential_author.lower() not in ["et", "al"]:
                             if potential_author not in authors:
                                 authors.append(potential_author)
                                 # Only take the first capitalized sequence from each author section
                                 break
+
+                # Skip this match if no valid authors found (prevents year-only false positives)
+                if not authors:
+                    continue
 
                 # Extract year (handles both "2011" and "(2011)" formats)
                 year_match = re.search(r"\((\d{4}|forthcoming)\)|(\d{4}|forthcoming)", content)
@@ -288,6 +307,78 @@ class BibTexClient:
                     "authors": authors,
                     "year": year,
                     "citation_type": "parenthetical",
+                    "has_locator": bool(locator),
+                    "locator": locator,
+                    "prefix": prefix,
+                    "suffix": suffix,
+                    "is_possessive": False,
+                })
+
+            # Find square bracket citations: [Author Year]
+            for match in re.finditer(self.SQUARE_BRACKET_PATTERN, line):
+                text = match.group(0)
+                content = text[1:-1]  # Remove outer brackets
+
+                # Exclude year ranges like [2010-2015]
+                if re.match(r"^\d{4}\-\d{4}$", content.strip()):
+                    continue
+
+                # Extract prefix (supports multiple: "see e.g.", "see also", etc.)
+                prefix_match = re.match(r"^((?:see\s+)?(?:also\s+)?(?:e\.g\.|i\.e\.|cf\.)?)\s*", content, re.IGNORECASE)
+                prefix = prefix_match.group(1).strip() if prefix_match and prefix_match.group(1).strip() else ""
+
+                # Extract authors - handle multiple authors separated by and/&/commas/spaces
+                content_for_authors = content
+                if prefix:
+                    content_for_authors = re.sub(r"^" + re.escape(prefix) + r"\s*", "", content_for_authors, flags=re.IGNORECASE)
+
+                # Remove nested year parens like "(2011)" to avoid confusion
+                content_for_authors = re.sub(r"\(\d{4}[a-z]?\)", "", content_for_authors)
+                content_for_authors = re.sub(r"\(forthcoming\)", "", content_for_authors, flags=re.IGNORECASE)
+
+                # Remove "et al" variations
+                content_for_authors = re.sub(r"\s+et\.?\s*al\.?|\s+etal\b|\s+et\s+all\b", "", content_for_authors, flags=re.IGNORECASE)
+
+                # Split on "and", "&", commas, or space before any letter (for mixed case)
+                parts = re.split(r"(?:\s+and\s+|\s+&\s+|&|,\s+|\s+(?=[A-Za-z]))", content_for_authors)
+                authors = []
+                for part in parts:
+                    part = part.strip()
+                    # Extract capitalized words (case-insensitive)
+                    for author_match in re.finditer(r"[A-Za-z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", part):
+                        potential_author = author_match.group(0).strip()
+                        # Skip the year and other non-author content
+                        if not re.match(r"^\d{4}|forthcoming", potential_author, re.IGNORECASE) and potential_author.lower() not in ["et", "al"]:
+                            if potential_author not in authors:
+                                authors.append(potential_author)
+                                break
+
+                # Skip this match if no valid authors found
+                if not authors:
+                    continue
+
+                # Extract year
+                year_match = re.search(r"\((\d{4}|forthcoming)\)|(\d{4}|forthcoming)", content)
+                if year_match:
+                    year = year_match.group(1) if year_match.group(1) else year_match.group(2)
+                else:
+                    year = ""
+
+                # Extract suffix
+                suffix_match = re.search(r";\s*(.+)$", content)
+                suffix = suffix_match.group(1).strip() if suffix_match else ""
+
+                # Extract locator
+                locator_match = re.search(r"(p+\.\s*\d+|pp\.\s*\d+-\d+|ch\.\s*\d+)", content, re.IGNORECASE)
+                locator = locator_match.group(0) if locator_match else ""
+
+                citations.append({
+                    "text": text,
+                    "line": line_num,
+                    "column": match.start(),
+                    "authors": authors,
+                    "year": year,
+                    "citation_type": "parenthetical",  # Treat as parenthetical type
                     "has_locator": bool(locator),
                     "locator": locator,
                     "prefix": prefix,

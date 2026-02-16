@@ -1,25 +1,17 @@
-# analytics-toolkit
+# Analytics Toolkit
 
-R workflow skills for research data analysis projects.
+Tools for R workflow optimization in research data analysis: parallel execution, code quality, environment management, and pipeline auditing.
 
-## Skills
+## Installation
 
-### r-parallel
-Converts sequential R code to parallel execution using the future ecosystem, with correct seed handling for reproducibility and cross-platform backends.
+See the marketplace README in the parent directory for installation instructions. Once installed, all tools listed below are available within Claude Code.
 
-**Use when**: You want to parallelize R code, speed up R scripts, or convert sequential loops/apply calls to parallel execution.
+## Tools Overview
 
-### r-style
-Detects LLM code smells in R scripts and rewrites them to match your personal coding style. Post-production only -- use after analysis is complete and outputs are verified.
+**r-parallel** — Convert sequential R code to parallel execution using the future ecosystem. Handles seed management for reproducibility and supports cross-platform backends. Use when you want to speed up loops, apply calls, or other sequential operations in R.
 
-**Use when**: You have FINISHED R analysis code and want it cleaned up for human readability.
+**r-style** — Detect and refactor LLM-generated code smells in R scripts. Use after analysis is complete and outputs are verified to clean up code for readability and consistency with your coding style.
 
-### renv-manager
-Cautious DevOps engineer for R project infrastructure. Manages renv transitions and reproducible R environments with a stability-first approach.
+**renv-manager** — Manage reproducible R environments using renv. Use when setting up new projects, transitioning existing projects to renv, or migrating from global package libraries to project-level dependency management.
 
-**Use when**: Transitioning R projects to renv, setting up reproducible R environments, or migrating from global package libraries.
-
-### dependency-tracker
-Maps complete data flow in research projects from raw inputs through intermediate processing to final manuscript outputs. Identifies stale files, broken links, and undocumented dependencies across R, Stata, Python, and LaTeX.
-
-**Use when**: Auditing research pipelines, checking for stale outputs, or mapping data flow from raw inputs to final LaTeX outputs.
+**dependency-tracker** — Map complete data flow in research pipelines from raw inputs through intermediate processing to final manuscript outputs. Identifies stale files, broken links, and undocumented dependencies across R, Stata, Python, and LaTeX. Use when auditing research pipelines, checking for stale outputs, or understanding the complete dependency structure from raw data to publication.

@@ -654,3 +654,312 @@ class TestNestedParenthesesAndMultiplePrefixes:
         assert len(citations) == 1
         assert citations[0]["citation_type"] == "parenthetical"
         assert citations[0]["text"] == "(e.g. Suri (2011))"
+
+
+class TestSloppyCitationFormats:
+    """Test handling of sloppy/non-standard citation formats found in drafts"""
+
+    def test_lowercase_author_name(self):
+        """(athey 2006) - lowercase author name should be detected"""
+        content = "This was shown in (athey 2006) as a key finding."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(athey 2006)"
+        assert citations[0]["year"] == "2006"
+        # Author might be extracted as "athey" (lowercase)
+        assert len(citations[0]["authors"]) >= 1
+        assert citations[0]["authors"][0].lower() == "athey"
+
+    def test_semicolon_separator(self):
+        """(Suri; 2011) - semicolon between author and year"""
+        content = "Evidence suggests (Suri; 2011) this pattern."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Suri; 2011)"
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+
+    def test_colon_separator(self):
+        """(Suri: 2011) - colon between author and year"""
+        content = "Studies show (Suri: 2011) significant results."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Suri: 2011)"
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+
+    def test_square_brackets(self):
+        """[Suri 2011] - square brackets instead of parentheses"""
+        content = "The analysis [Suri 2011] demonstrates this."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "[Suri 2011]"
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+
+    def test_author_with_initial(self):
+        """Suri, T. (2011) - comma and initial after surname"""
+        content = "According to Suri, T. (2011) this pattern holds."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+        assert citations[0]["citation_type"] == "narrative"
+
+    def test_wrong_et_al_format_with_period(self):
+        """Suri et. al. (2011) - et. al. with period after et"""
+        content = "Research by Suri et. al. (2011) shows results."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+        # "et. al." should be recognized and not treated as author
+
+    def test_et_al_no_spaces(self):
+        """Suri etal (2011) - etal without spaces"""
+        content = "Studies by Suri etal (2011) confirm this."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+        # "etal" should not be in authors list
+        assert all(author.lower() != "etal" for author in citations[0]["authors"])
+
+    def test_et_all_typo(self):
+        """Suri et all (2011) - et all instead of et al"""
+        content = "Work by Suri et all (2011) demonstrates this."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert "Suri" in citations[0]["authors"]
+        assert citations[0]["year"] == "2011"
+        # "all" should not be in authors list
+        assert all(author.lower() != "all" for author in citations[0]["authors"])
+
+    def test_ampersand_no_spaces(self):
+        """(Suri&Chen 2011) - ampersand without spaces"""
+        content = "Previous work (Suri&Chen 2011) shows evidence."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Suri&Chen 2011)"
+        assert "Suri" in citations[0]["authors"]
+        assert "Chen" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 2
+        assert citations[0]["year"] == "2011"
+
+    def test_year_only_not_detected(self):
+        """(2011) - year-only should NOT be detected as citation"""
+        content = "Some text before (2011) was an important year."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        # Should NOT detect (2011) as a citation
+        assert len(citations) == 0
+
+    def test_mixed_case_author_names(self):
+        """(SURI 2011) - all caps author name"""
+        content = "Studies show (SURI 2011) significant results."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(SURI 2011)"
+        assert len(citations[0]["authors"]) >= 1
+        assert citations[0]["year"] == "2011"
+
+    def test_square_brackets_with_et_al(self):
+        """[Banerjee et al. 2013] - square brackets with et al"""
+        content = "Research shows [Banerjee et al. 2013] impact."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "[Banerjee et al. 2013]"
+        assert "Banerjee" in citations[0]["authors"]
+        assert citations[0]["year"] == "2013"
+
+    def test_lowercase_parenthetical_both_authors(self):
+        """(conley and udry 2010) - lowercase authors in parenthetical"""
+        content = "This was shown (conley and udry 2010) in the study."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["citation_type"] == "parenthetical"
+        assert citations[0]["year"] == "2010"
+        # Should extract both authors even if lowercase
+        assert len(citations[0]["authors"]) >= 1
+
+    def test_mixed_case_space_separated(self):
+        """(Smith jones 2011) - space-separated with mixed case"""
+        content = "Work by (Smith jones 2011) is important."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Smith jones 2011)"
+        assert "Smith" in citations[0]["authors"]
+        assert "jones" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 2
+        assert citations[0]["year"] == "2011"
+
+    def test_mixed_case_three_authors(self):
+        """(smith Chen udry 2011) - three authors with mixed case"""
+        content = "Analysis by (smith Chen udry 2011) shows patterns."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(smith Chen udry 2011)"
+        assert "smith" in citations[0]["authors"]
+        assert "Chen" in citations[0]["authors"]
+        assert "udry" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 3
+        assert citations[0]["year"] == "2011"
+
+    def test_mixed_case_with_and(self):
+        """(Smith and jones 2011) - mixed case with explicit 'and'"""
+        content = "Study by (Smith and jones 2011) shows results."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Smith and jones 2011)"
+        assert "Smith" in citations[0]["authors"]
+        assert "jones" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 2
+        assert citations[0]["year"] == "2011"
+
+    def test_mixed_case_square_brackets(self):
+        """[Smith jones 2011] - mixed case in square brackets"""
+        content = "Work by [Smith jones 2011] is important."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "[Smith jones 2011]"
+        assert "Smith" in citations[0]["authors"]
+        assert "jones" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 2
+        assert citations[0]["year"] == "2011"
+
+    def test_mixed_case_square_brackets_three_authors(self):
+        """[smith Chen udry 2011] - three authors mixed case in square brackets"""
+        content = "Analysis by [smith Chen udry 2011] shows patterns."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "[smith Chen udry 2011]"
+        assert "smith" in citations[0]["authors"]
+        assert "Chen" in citations[0]["authors"]
+        assert "udry" in citations[0]["authors"]
+        assert len(citations[0]["authors"]) == 3
+        assert citations[0]["year"] == "2011"
