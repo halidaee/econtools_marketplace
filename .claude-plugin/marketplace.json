@@ -1,20 +1,22 @@
 {
   "name": "research-tools",
   "description": "Economics research skills: R analytics and manuscript preparation",
-  "maintainer": {
+  "owner": {
     "name": "Halid Aee"
   },
   "homepage": "~/Documents/Github/Claude_Plugins",
-  "plugins": {
-    "analytics-toolkit": {
+  "plugins": [
+    {
+      "name": "analytics-toolkit",
       "source": "./analytics-toolkit",
       "version": "1.0.0",
       "description": "R workflow optimization: parallelization, style, environments, dependencies"
     },
-    "manuscript-tools": {
+    {
+      "name": "manuscript-tools",
       "source": "./manuscript-tools",
       "version": "1.0.0",
       "description": "Economics manuscript preparation: AER formatting, BibTeX, palettes, notation"
     }
-  }
+  ]
 }
