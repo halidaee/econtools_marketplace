@@ -6,6 +6,25 @@ Tools for academic manuscript preparation: citation discovery and management, bi
 
 Install via the marketplace. See the [parent directory README](../README.md) for instructions.
 
+## ⚙️ Configuration (Required)
+
+**Before using the bibliography tools,** you must configure CrossRef with your email address:
+
+**Option 1: Environment variable**
+```bash
+export CROSSREF_MAILTO="your.email@domain.com"
+```
+
+**Option 2: Config file**
+```bash
+mkdir -p ~/.config/crossref-mcp
+echo '{"mailto": "your.email@domain.com"}' > ~/.config/crossref-mcp/config.json
+```
+
+This gives you access to CrossRef's "polite pool" (50 req/s vs 1 req/s). Without it, citation resolution will be slow or fail.
+
+**Optional:** For higher Semantic Scholar rate limits, add an API key to `~/.config/semantic-scholar-mcp/api_key` (see [marketplace README](../README.md) for details).
+
 ## 🛠️ Tools Overview
 
 ### 📚 Bibliography Management

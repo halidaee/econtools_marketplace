@@ -94,6 +94,29 @@ Even within a single research project, you may want to toggle between plugins de
 
 ---
 
+## 🔧 Configuration
+
+### CrossRef Email (Required for manuscript-tools)
+
+The CrossRef MCP **requires** an email address to access their "polite pool" API tier (50 req/s vs 1 req/s). This takes 30 seconds to set up:
+
+**Option 1: Environment variable**
+```bash
+export CROSSREF_MAILTO="your.email@domain.com"
+```
+
+Add this to your shell profile (`~/.zshrc` or `~/.bashrc`) to make it permanent.
+
+**Option 2: Config file**
+```bash
+mkdir -p ~/.config/crossref-mcp
+echo '{"mailto": "your.email@domain.com"}' > ~/.config/crossref-mcp/config.json
+```
+
+Without this configuration, the CrossRef MCP will not function properly.
+
+---
+
 ## Semantic Scholar API Key (Optional)
 
 The manuscript tools search Semantic Scholar to resolve citations and retrieve paper metadata. This works out of the box without any setup — unauthenticated requests share a pool of 1,000 requests per second across all users, which is more than enough for typical use.
