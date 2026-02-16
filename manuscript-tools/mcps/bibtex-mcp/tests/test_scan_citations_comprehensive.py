@@ -577,3 +577,80 @@ class TestTypoAndNonStandardFormats:
         assert citations[0]["year"] == "2006"
         # Extraction will split on space, but skill should check if compound name first
         assert "Bickel" in citations[0]["authors"]
+
+
+class TestNestedParenthesesAndMultiplePrefixes:
+    """Test handling of nested parentheses and multiple prefix words"""
+
+    def test_nested_year_parens(self):
+        """(e.g. Suri (2011)) - year in nested parentheses"""
+        content = "Evidence exists (e.g. Suri (2011)) for this claim."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(e.g. Suri (2011))"
+        assert citations[0]["citation_type"] == "parenthetical"
+        assert citations[0]["authors"] == ["Suri"]
+        assert citations[0]["year"] == "2011"
+        assert citations[0]["prefix"] == "e.g."
+
+    def test_multiple_prefixes(self):
+        """(see e.g. Suri 2011) - multiple prefix words"""
+        content = "This is shown (see e.g. Suri 2011) in the literature."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(see e.g. Suri 2011)"
+        assert citations[0]["citation_type"] == "parenthetical"
+        assert citations[0]["authors"] == ["Suri"]
+        assert citations[0]["year"] == "2011"
+        assert citations[0]["prefix"] == "see e.g."
+
+    def test_multiple_citations_with_nested_years(self):
+        """(see e.g. Suri (2011) and Conley and Udry (2002)) - multiple works with nested years"""
+        content = "Evidence shows (see e.g. Suri (2011) and Conley and Udry (2002)) this effect."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["citation_type"] == "parenthetical"
+        # Should extract all authors
+        assert "Suri" in citations[0]["authors"]
+        assert "Conley" in citations[0]["authors"]
+        assert "Udry" in citations[0]["authors"]
+        # Year extraction gets first year (2011)
+        assert citations[0]["year"] == "2011"
+        assert citations[0]["prefix"] == "see e.g."
+
+    def test_narrative_not_detected_inside_parenthetical(self):
+        """Suri (2011) inside (e.g. Suri (2011)) should not be detected as separate narrative"""
+        content = "According to (e.g. Suri (2011)) this holds."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        # Should only detect the parenthetical, not the nested narrative
+        assert len(citations) == 1
+        assert citations[0]["citation_type"] == "parenthetical"
+        assert citations[0]["text"] == "(e.g. Suri (2011))"

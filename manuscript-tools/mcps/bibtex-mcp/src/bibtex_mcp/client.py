@@ -27,8 +27,8 @@ class BibTexClient:
     NARRATIVE_PATTERN = r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*(?:(?:,\s+and|\s+and|,|\s+&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)*(?:\s+et\s+al\.?)?\s*\((?:forthcoming|\d{4}[a-z]?)(?:,\s*(?:p+\.?|pp\.?|ch\.?)\s*\d+(?:\-\d+)?)?[^)]*\)"
     # Parenthetical: (Author Year) or (Author and Author Year) or (Author, Author, 2006) etc
     # Now supports: and, &, comma-separated, or space-separated authors (may need skill-level disambiguation)
-    # Allows optional prefix like "(see Author Year)"
-    PARENTHETICAL_PATTERN = r"\([^)]*?[A-Z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))[A-Z][a-zA-Z'-]+)*(?:\s+et\s+al\.?)?\s*,?\s*(?:forthcoming|\d{4}[a-z]?)[^)]*\)"
+    # Allows optional prefix like "(see Author Year)" and nested year parens like "(Author (2011))"
+    PARENTHETICAL_PATTERN = r"\((?:[^()]*?|[^()]*\([^()]+\)[^()]*?)[A-Z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))[A-Z][a-zA-Z'-]+)*(?:\s+et\s+al\.?)?\s*,?\s*(?:\((?:\d{4}[a-z]?|forthcoming)\)|\d{4}[a-z]?|forthcoming)(?:[^()]*|\([^()]+\))*\)"
 
     # Stopwords to skip in title
     STOPWORDS = {"a", "an", "the", "on", "in", "at", "to", "for"}
@@ -166,6 +166,16 @@ class BibTexClient:
             # Find narrative citations
             for match in re.finditer(self.NARRATIVE_PATTERN, line):
                 text = match.group(0)
+
+                # Skip if this narrative citation is inside a parenthetical block
+                # Check if there's an unclosed opening paren before this match
+                before_match = line[:match.start()]
+                open_parens = before_match.count('(')
+                close_parens = before_match.count(')')
+                if open_parens > close_parens:
+                    # This is inside a parenthetical citation, skip it
+                    continue
+
                 # Exclude year ranges like "Something (2010-2015)"
                 if re.search(r"\(\d{4}\-\d{4}\)", text):
                     continue
@@ -222,17 +232,27 @@ class BibTexClient:
                 if re.match(r"^\d{4}\-\d{4}$", content.strip()):
                     continue
 
-                # Extract prefix
-                prefix_match = re.match(r"^(see|e\.g\.|i\.e\.|cf\.)\s+", content, re.IGNORECASE)
-                prefix = prefix_match.group(1) if prefix_match else ""
+                # Extract prefix (supports multiple: "see e.g.", "see also", etc.)
+                prefix_match = re.match(r"^((?:see\s+)?(?:also\s+)?(?:e\.g\.|i\.e\.|cf\.)?)\s*", content, re.IGNORECASE)
+                prefix = prefix_match.group(1).strip() if prefix_match and prefix_match.group(1).strip() else ""
 
                 # Extract authors - handle multiple authors separated by and/&/commas/spaces
-                # Remove "et al" first to avoid parsing it as an author
-                content_clean = re.sub(r"\s+et\s+al\.?", "", content)
+                # First remove prefix and any nested year parens
+                content_for_authors = content
+                if prefix:
+                    # Remove the prefix from the beginning
+                    content_for_authors = re.sub(r"^" + re.escape(prefix) + r"\s*", "", content_for_authors, flags=re.IGNORECASE)
+
+                # Remove nested year parens like "(2011)" to avoid confusion
+                content_for_authors = re.sub(r"\(\d{4}[a-z]?\)", "", content_for_authors)
+                content_for_authors = re.sub(r"\(forthcoming\)", "", content_for_authors, flags=re.IGNORECASE)
+
+                # Remove "et al" to avoid parsing it as an author
+                content_for_authors = re.sub(r"\s+et\s+al\.?", "", content_for_authors)
 
                 # Split on "and", "&", commas, or space before capital letter
                 # This handles: "Smith and Jones", "Smith, Jones,", "Smith Jones," (space-separated)
-                parts = re.split(r"(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))", content_clean)
+                parts = re.split(r"(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))", content_for_authors)
                 authors = []
                 for part in parts:
                     part = part.strip()
@@ -246,9 +266,12 @@ class BibTexClient:
                                 # Only take the first capitalized sequence from each author section
                                 break
 
-                # Extract year
-                year_match = re.search(r"(\d{4}|forthcoming)", content)
-                year = year_match.group(1) if year_match else ""
+                # Extract year (handles both "2011" and "(2011)" formats)
+                year_match = re.search(r"\((\d{4}|forthcoming)\)|(\d{4}|forthcoming)", content)
+                if year_match:
+                    year = year_match.group(1) if year_match.group(1) else year_match.group(2)
+                else:
+                    year = ""
 
                 # Extract suffix
                 suffix_match = re.search(r";\s*(.+)$", content)
