@@ -1,8 +1,13 @@
 {
   "name": "manuscript-tools",
-  "version": "1.0.0",
-  "description": "Academic manuscript skills for figures, tables, notation, proofs, bibliography management, and visual synchronization",
+  "version": "2.0.0",
+  "description": "Academic manuscript skills for figures, tables, notation, proofs, bibliography, and visual synchronization. Includes 3 MCPs for citation operations.",
   "author": {
     "name": "halidaee"
-  }
+  },
+  "mcps": [
+    "mcps/semantic-scholar-mcp",
+    "mcps/crossref-mcp",
+    "mcps/bibtex-mcp"
+  ]
 }
