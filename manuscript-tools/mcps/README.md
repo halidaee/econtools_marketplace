@@ -72,24 +72,6 @@ pytest crossref-mcp/tests/
 pytest bibtex-mcp/tests/
 ```
 
-## Register with Claude Code
-
-From the `manuscript-tools/mcps/` directory:
-
-```bash
-claude mcp add semantic-scholar file://$(pwd)/semantic-scholar-mcp
-claude mcp add crossref file://$(pwd)/crossref-mcp
-claude mcp add bibtex file://$(pwd)/bibtex-mcp
-```
-
-Or use the fully qualified names:
-
-```bash
-claude mcp add manuscript-tools:semantic-scholar file://$(pwd)/semantic-scholar-mcp
-claude mcp add manuscript-tools:crossref file://$(pwd)/crossref-mcp
-claude mcp add manuscript-tools:bibtex file://$(pwd)/bibtex-mcp
-```
-
 ## Configuration
 
 ### CrossRef MCP (Required)
@@ -171,8 +153,8 @@ export CROSSREF_MAILTO="your.email@domain.com"
 
 **Issue: Can't find pixi command**
 ```bash
-# Use the absolute path
-/Users/halidaee/.pixi/bin/pixi run test
+# Use the absolute path (adjust for your home directory)
+~/.pixi/bin/pixi run test
 ```
 
 ## Version History
