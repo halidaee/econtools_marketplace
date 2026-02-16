@@ -521,3 +521,59 @@ Brown (2015) extends the work.
         parenthetical = [c for c in citations if c["citation_type"] == "parenthetical"]
         assert len(narrative) >= 2
         assert len(parenthetical) >= 1
+
+
+class TestTypoAndNonStandardFormats:
+    """Test handling of typos and non-standard citation formats"""
+
+    def test_missing_and_space_separated_with_comma(self):
+        """(Bickel Chen, 2006) - space-separated authors with comma before year"""
+        content = "This was found by (Bickel Chen, 2006) in their study."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Bickel Chen, 2006)"
+        assert "Bickel" in citations[0]["authors"]
+        assert "Chen" in citations[0]["authors"]
+        assert citations[0]["year"] == "2006"
+
+    def test_comma_separated_authors(self):
+        """(Bickel, Chen, 2006) - comma-separated authors instead of 'and'"""
+        content = "Previous work by (Bickel, Chen, 2006) demonstrated this."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Bickel, Chen, 2006)"
+        assert "Bickel" in citations[0]["authors"]
+        assert "Chen" in citations[0]["authors"]
+        assert citations[0]["year"] == "2006"
+
+    def test_space_separated_without_comma(self):
+        """(Bickel Chen 2006) - space-separated authors without comma"""
+        content = "According to (Bickel Chen 2006) without comma."
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.qmd', delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        client = BibTexClient()
+        citations = client.scan_bare_citations(path)
+        Path(path).unlink()
+
+        # Should detect it, but skill-level logic may disambiguate as single compound name
+        assert len(citations) == 1
+        assert citations[0]["text"] == "(Bickel Chen 2006)"
+        assert citations[0]["year"] == "2006"
+        # Extraction will split on space, but skill should check if compound name first
+        assert "Bickel" in citations[0]["authors"]

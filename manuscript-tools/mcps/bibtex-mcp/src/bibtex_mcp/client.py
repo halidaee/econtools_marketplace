@@ -25,7 +25,10 @@ class BibTexClient:
     # Narrative: Author (Year) or Author (Year, p. N) or Author et al. (Year)
     # Handles: "Smith (2010)", "Smith and Jones (2010)", "Smith, Jones, and Brown (2010)"
     NARRATIVE_PATTERN = r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*(?:(?:,\s+and|\s+and|,|\s+&)\s+[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*)*(?:\s+et\s+al\.?)?\s*\((?:forthcoming|\d{4}[a-z]?)(?:,\s*(?:p+\.?|pp\.?|ch\.?)\s*\d+(?:\-\d+)?)?[^)]*\)"
-    PARENTHETICAL_PATTERN = r"\([^)]*[A-Z][a-zA-Z'-]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z'-]+)?(?:\s+et\s+al\.?)?\s+(?:forthcoming|\d{4}[a-z]?)[^)]*\)"
+    # Parenthetical: (Author Year) or (Author and Author Year) or (Author, Author, 2006) etc
+    # Now supports: and, &, comma-separated, or space-separated authors (may need skill-level disambiguation)
+    # Allows optional prefix like "(see Author Year)"
+    PARENTHETICAL_PATTERN = r"\([^)]*?[A-Z][a-zA-Z'-]+(?:(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))[A-Z][a-zA-Z'-]+)*(?:\s+et\s+al\.?)?\s*,?\s*(?:forthcoming|\d{4}[a-z]?)[^)]*\)"
 
     # Stopwords to skip in title
     STOPWORDS = {"a", "an", "the", "on", "in", "at", "to", "for"}
@@ -223,18 +226,25 @@ class BibTexClient:
                 prefix_match = re.match(r"^(see|e\.g\.|i\.e\.|cf\.)\s+", content, re.IGNORECASE)
                 prefix = prefix_match.group(1) if prefix_match else ""
 
-                # Extract authors - handle multiple authors
-                # Split on commas and "and"/"&"
-                parts = re.split(r"(?:,\s*|\s+and\s+|\s+&\s+)", content)
+                # Extract authors - handle multiple authors separated by and/&/commas/spaces
+                # Remove "et al" first to avoid parsing it as an author
+                content_clean = re.sub(r"\s+et\s+al\.?", "", content)
+
+                # Split on "and", "&", commas, or space before capital letter
+                # This handles: "Smith and Jones", "Smith, Jones,", "Smith Jones," (space-separated)
+                parts = re.split(r"(?:\s+and\s+|\s+&\s+|,\s+|\s+(?=[A-Z]))", content_clean)
                 authors = []
                 for part in parts:
                     part = part.strip()
-                    # Extract the first capitalized word (author name)
-                    author_match = re.match(r"([A-Z][a-zA-Z'-]+)", part)
-                    if author_match and "et" not in part.lower():
-                        author = author_match.group(1)
-                        if author not in authors:
-                            authors.append(author)
+                    # Extract capitalized words (could be compound names)
+                    for author_match in re.finditer(r"[A-Z][a-zA-Z'-]+(?:[-\s]+[a-z]+)*", part):
+                        potential_author = author_match.group(0).strip()
+                        # Skip the year and other non-author content
+                        if not re.match(r"^\d{4}|forthcoming", potential_author) and potential_author.lower() not in ["et", "al"]:
+                            if potential_author not in authors:
+                                authors.append(potential_author)
+                                # Only take the first capitalized sequence from each author section
+                                break
 
                 # Extract year
                 year_match = re.search(r"(\d{4}|forthcoming)", content)
