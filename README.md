@@ -68,19 +68,29 @@ Then, install the plugins:
 
 These plugins include multiple MCP servers and skills that are loaded into Claude's context when active. While powerful, they can be token-heavy if all plugins remain enabled simultaneously.
 
-**Recommended practice:** Disable plugins when not actively using them to conserve tokens:
+**Two approaches to manage token usage:**
+
+### Option 1: Global install + enable/disable as needed
+
+Install both plugins globally, then disable when not actively using them:
 
 ```bash
-/plugin disable analytics-toolkit
-/plugin disable manuscript-tools
+/plugin disable analytics-toolkit    # When not working with R code
+/plugin disable manuscript-tools     # When not preparing manuscripts
 ```
 
 Re-enable when needed:
 
 ```bash
-/plugin enable analytics-toolkit   # When working with R code
-/plugin enable manuscript-tools    # When preparing manuscripts
+/plugin enable analytics-toolkit     # When working with R code
+/plugin enable manuscript-tools      # When preparing manuscripts
 ```
+
+### Option 2: Project-specific installation
+
+Install plugins only in the projects where you need them. This prevents them from loading in unrelated work.
+
+Even within a single research project, you may want to toggle between plugins depending on your task—analytics tools for data analysis, manuscript tools for writing. You won't typically need both active at the same time.
 
 ---
 
