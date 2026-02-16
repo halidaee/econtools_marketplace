@@ -1,0 +1,37 @@
+[workspace]
+name = "manuscript-tools"
+version = "2.0.0"
+authors = ["halidaee <halidaee@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[dependencies]
+python = "3.11.*"
+pip = "*"
+
+# Development tools
+pytest = "*"
+pytest-cov = "*"
+respx = "*"  # For testing httpx-based code
+
+# Common MCP development dependencies
+httpx = "*"
+
+[pypi-dependencies]
+fastmcp = ">=2.0"
+
+[tasks]
+# Install local MCP packages in editable mode
+install-mcps = "pip install -e 'mcps/semantic-scholar-mcp/[dev]' -e 'mcps/crossref-mcp/[dev]' -e 'mcps/bibtex-mcp/[dev]'"
+
+# Run tests for semantic-scholar-mcp
+test-semantic = "pytest mcps/semantic-scholar-mcp/tests/"
+
+# Run tests for crossref-mcp
+test-crossref = "pytest mcps/crossref-mcp/tests/"
+
+# Run tests for bibtex-mcp
+test-bibtex = "pytest mcps/bibtex-mcp/tests/"
+
+# Run all tests (individually to avoid conftest conflicts)
+test = "pytest mcps/semantic-scholar-mcp/tests/ && pytest mcps/crossref-mcp/tests/ && pytest mcps/bibtex-mcp/tests/"
