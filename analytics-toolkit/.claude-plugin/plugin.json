@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "R workflow skills for parallelization, style enforcement, environment management, and pipeline dependency tracking",
   "author": {
-    "name": "Halid Aee"
+    "name": "halidaee"
   },
   "skills": [
     "skills/r-parallel",
