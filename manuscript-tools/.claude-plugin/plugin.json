@@ -4,5 +4,19 @@
   "description": "Academic manuscript skills for figures, tables, notation, proofs, bibliography, and visual synchronization. Includes 3 MCPs for citation operations.",
   "author": {
     "name": "halidaee"
+  },
+  "mcpServers": {
+    "semantic-scholar": {
+      "command": "uvx",
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}/mcps/semantic-scholar-mcp", "semantic-scholar-mcp"]
+    },
+    "crossref": {
+      "command": "uvx",
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}/mcps/crossref-mcp", "crossref-mcp"]
+    },
+    "bibtex": {
+      "command": "uvx",
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}/mcps/bibtex-mcp", "bibtex-mcp"]
+    }
   }
 }
