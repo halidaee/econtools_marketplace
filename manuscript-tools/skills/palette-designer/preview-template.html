@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palette Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: #333;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.1rem; font-weight: 600; margin: 2rem 0 1rem; color: #555; }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 2rem; }
+  .meta { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .meta-tag {
+    background: #e8e8e8; border-radius: 4px; padding: 0.25rem 0.6rem;
+    font-size: 0.75rem; color: #555;
+  }
+
+  /* Swatch Grid */
+  .swatch-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .swatch {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    background: #fff;
+  }
+  .swatch-color {
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    padding: 0.5rem;
+  }
+  .swatch-color span {
+    font-size: 0.7rem;
+    font-family: monospace;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.85);
+    color: #333;
+  }
+  .swatch-info {
+    padding: 0.6rem 0.75rem;
+  }
+  .swatch-name { font-weight: 600; font-size: 0.85rem; }
+  .swatch-purpose { font-size: 0.75rem; color: #777; margin-top: 0.15rem; }
+
+  /* Grayscale Row */
+  .grayscale-row {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .grayscale-block {
+    height: 40px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-family: monospace;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+
+  /* Charts */
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .chart-container {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .chart-title { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.75rem; color: #555; }
+  svg { width: 100%; height: auto; }
+
+  @media (max-width: 600px) {
+    .charts { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PALETTE_DATA_INJECTION_POINT -->
+
+<h1 id="title">Palette Preview</h1>
+<p class="subtitle" id="subtitle"></p>
+<div class="meta" id="meta"></div>
+
+<h2>Color Swatches</h2>
+<div class="swatch-grid" id="swatches"></div>
+
+<h2>Grayscale Simulation</h2>
+<div class="grayscale-row" id="grayscale"></div>
+
+<div class="charts">
+  <div class="chart-container">
+    <div class="chart-title">Line Chart Preview</div>
+    <svg id="line-chart" viewBox="0 0 400 200"></svg>
+  </div>
+  <div class="chart-container">
+    <div class="chart-title">Bar Chart Preview</div>
+    <svg id="bar-chart" viewBox="0 0 400 200"></svg>
+  </div>
+</div>
+
+<script>
+(function() {
+  if (typeof PALETTE === 'undefined') {
+    document.body.innerHTML = '<h1>No palette data found.</h1><p>Run palette-designer to generate a preview.</p>';
+    return;
+  }
+
+  var colors = PALETTE.colors;
+  var meta = PALETTE.metadata;
+  var n = colors.length;
+
+  // Title and subtitle
+  document.getElementById('title').textContent = 'Palette Preview (' + n + ' colors)';
+  document.getElementById('subtitle').textContent =
+    (meta.context || 'Custom palette') + ' \u2014 ' + (meta.style || 'custom') + ' style';
+
+  // Meta tags
+  var metaEl = document.getElementById('meta');
+  (meta.accessibility || []).forEach(function(tag) {
+    var span = document.createElement('span');
+    span.className = 'meta-tag';
+    span.textContent = tag;
+    metaEl.appendChild(span);
+  });
+
+  // Swatch grid
+  var grid = document.getElementById('swatches');
+  grid.style.gridTemplateColumns = 'repeat(' + Math.min(n, 6) + ', 1fr)';
+  colors.forEach(function(c) {
+    var swatch = document.createElement('div');
+    swatch.className = 'swatch';
+    swatch.innerHTML =
+      '<div class="swatch-color" style="background:' + c.hex + '">' +
+        '<span>' + c.hex + '</span>' +
+      '</div>' +
+      '<div class="swatch-info">' +
+        '<div class="swatch-name">' + (c.name || '') + '</div>' +
+        '<div class="swatch-purpose">' + (c.purpose || '') + '</div>' +
+      '</div>';
+    grid.appendChild(swatch);
+  });
+
+  // Grayscale simulation
+  function toGrayscale(hex) {
+    var r = parseInt(hex.slice(1,3), 16);
+    var g = parseInt(hex.slice(3,5), 16);
+    var b = parseInt(hex.slice(5,7), 16);
+    var gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    var h = gray.toString(16);
+    if (h.length < 2) h = '0' + h;
+    return { hex: '#' + h + h + h, lightness: Math.round(gray / 255 * 100) };
+  }
+
+  var gsRow = document.getElementById('grayscale');
+  gsRow.style.gridTemplateColumns = 'repeat(' + Math.min(n, 6) + ', 1fr)';
+  colors.forEach(function(c) {
+    var gs = toGrayscale(c.hex);
+    var block = document.createElement('div');
+    block.className = 'grayscale-block';
+    block.style.background = gs.hex;
+    block.style.color = gs.lightness > 50 ? '#333' : '#fff';
+    block.style.textShadow = gs.lightness > 50 ? 'none' : '0 1px 2px rgba(0,0,0,0.5)';
+    block.textContent = 'L=' + gs.lightness + '%';
+    gsRow.appendChild(block);
+  });
+
+  // Mock line chart
+  var lineChart = document.getElementById('line-chart');
+  var cW = 400, cH = 200, pad = 30;
+  var pW = cW - 2 * pad, pH = cH - 2 * pad;
+
+  var svgLines = '<line x1="' + pad + '" y1="' + (cH - pad) + '" x2="' + (cW - pad) + '" y2="' + (cH - pad) + '" stroke="#ddd" stroke-width="1"/>' +
+    '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (cH - pad) + '" stroke="#ddd" stroke-width="1"/>';
+
+  colors.forEach(function(c, i) {
+    var pts = [];
+    var seed = (i + 1) * 17;
+    for (var j = 0; j <= 8; j++) {
+      var x = pad + (j / 8) * pW;
+      var base = pH * 0.3 + (i * pH * 0.08);
+      var noise = Math.sin(seed + j * 1.5) * pH * 0.15;
+      var y = pad + base + noise;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+    }
+    svgLines += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + c.hex + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  });
+  lineChart.innerHTML = svgLines;
+
+  // Mock bar chart
+  var barChart = document.getElementById('bar-chart');
+  var bGW = pW / n;
+  var bW = Math.min(bGW * 0.65, 50);
+
+  var svgBars = '<line x1="' + pad + '" y1="' + (cH - pad) + '" x2="' + (cW - pad) + '" y2="' + (cH - pad) + '" stroke="#ddd" stroke-width="1"/>' +
+    '<line x1="' + pad + '" y1="' + pad + '" x2="' + pad + '" y2="' + (cH - pad) + '" stroke="#ddd" stroke-width="1"/>';
+
+  colors.forEach(function(c, i) {
+    var bH = pH * (0.4 + ((i * 13 + 7) % 10) * 0.055);
+    var x = pad + i * bGW + (bGW - bW) / 2;
+    var y = cH - pad - bH;
+    svgBars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bW.toFixed(1) + '" height="' + bH.toFixed(1) + '" fill="' + c.hex + '" rx="3"/>';
+  });
+  barChart.innerHTML = svgBars;
+})();
+</script>
+</body>
+</html>

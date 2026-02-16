@@ -1,0 +1,11 @@
+# Runtime generated
+**/.palette-cache.json
+**/palette-preview.html
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store

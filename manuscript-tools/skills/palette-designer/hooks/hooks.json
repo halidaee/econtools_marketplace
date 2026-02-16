@@ -1,0 +1,19 @@
+{
+  "description": "Auto-generate browser preview after palette-designer generates colors",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": {
+          "tool_name": "Write",
+          "file_path": ".palette-cache\\.json$"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/skills/palette-designer/hooks/generate-preview.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
