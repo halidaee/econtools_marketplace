@@ -2,7 +2,9 @@
   "name": "analytics-toolkit",
   "version": "1.0.0",
   "description": "R workflow skills for parallelization, style enforcement, environment management, and pipeline dependency tracking",
-  "author": "halidaee",
+  "author": {
+    "name": "Halid Aee"
+  },
   "skills": [
     "skills/r-parallel",
     "skills/r-style",

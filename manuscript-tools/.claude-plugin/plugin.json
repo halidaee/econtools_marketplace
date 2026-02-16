@@ -2,7 +2,9 @@
   "name": "manuscript-tools",
   "version": "1.0.0",
   "description": "Academic manuscript skills for figures, tables, notation, proofs, bibliography management, and visual synchronization",
-  "author": "halidaee",
+  "author": {
+    "name": "Halid Aee"
+  },
   "skills": [
     "skills/aer-figures",
     "skills/aer-tables",
